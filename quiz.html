@@ -1,0 +1,1286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>System Design Quiz — Level Up</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #07070f;
+    --surface:   #0f0f1e;
+    --card:      #14142a;
+    --border:    #1f1f3a;
+    --cyan:      #00d4ff;
+    --cyan-dim:  #00d4ff22;
+    --purple:    #7c3aed;
+    --purple-dim:#7c3aed22;
+    --green:     #10b981;
+    --green-dim: #10b98122;
+    --red:       #ef4444;
+    --red-dim:   #ef444422;
+    --yellow:    #f59e0b;
+    --text:      #e2e8f0;
+    --muted:     #64748b;
+    --radius:    12px;
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    overflow-x: hidden;
+  }
+
+  /* ── Screens ── */
+  .screen { display: none; width: 100%; max-width: 720px; animation: fadeIn .35s ease; }
+  .screen.active { display: flex; flex-direction: column; }
+  @keyframes fadeIn { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+
+  /* ── Start Screen ── */
+  .start-hero {
+    text-align: center;
+    padding: 40px 24px 32px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+  .start-badge {
+    display: inline-block;
+    background: var(--cyan-dim);
+    color: var(--cyan);
+    border: 1px solid var(--cyan);
+    border-radius: 999px;
+    font-size: .75rem;
+    font-weight: 600;
+    letter-spacing: .08em;
+    padding: 4px 14px;
+    margin-bottom: 20px;
+    text-transform: uppercase;
+  }
+  .start-hero h1 {
+    font-size: clamp(1.8rem, 5vw, 2.8rem);
+    font-weight: 800;
+    line-height: 1.1;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, var(--cyan), var(--purple));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .start-hero p { color: var(--muted); line-height: 1.6; max-width: 480px; margin: 0 auto 28px; }
+
+  .start-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 28px;
+  }
+  .stat-chip {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 10px;
+    text-align: center;
+  }
+  .stat-chip .num { font-size: 1.5rem; font-weight: 800; color: var(--cyan); }
+  .stat-chip .lbl { font-size: .72rem; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-top: 2px; }
+
+  .rank-preview {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    flex-wrap: wrap;
+    margin-bottom: 28px;
+  }
+  .rank-pill {
+    font-size: .72rem;
+    padding: 5px 12px;
+    border-radius: 999px;
+    font-weight: 600;
+    border: 1px solid;
+  }
+  .rank-pill.r1 { color: #94a3b8; border-color: #94a3b8; background:#94a3b811; }
+  .rank-pill.r2 { color: var(--yellow); border-color: var(--yellow); background:#f59e0b11; }
+  .rank-pill.r3 { color: #a78bfa; border-color: #a78bfa; background:#a78bfa11; }
+  .rank-pill.r4 { color: var(--cyan); border-color: var(--cyan); background:var(--cyan-dim); }
+  .rank-pill.r5 { color: var(--green); border-color: var(--green); background:var(--green-dim); }
+  .rank-pill.r6 { color: #fbbf24; border-color: #fbbf24; background:#fbbf2411; font-weight:800; }
+
+  /* ── Buttons ── */
+  .btn {
+    cursor: pointer; border: none; border-radius: var(--radius);
+    font-size: 1rem; font-weight: 700; padding: 14px 32px;
+    transition: filter .15s, transform .12s;
+    letter-spacing: .02em;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn-primary {
+    background: linear-gradient(135deg, var(--cyan), var(--purple));
+    color: #fff;
+    width: 100%;
+    font-size: 1.05rem;
+    padding: 16px;
+  }
+  .btn-primary:hover { filter: brightness(1.12); }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    padding: 10px 20px;
+    font-size: .9rem;
+  }
+  .btn-ghost:hover { border-color: var(--cyan); color: var(--cyan); }
+
+  /* ── Quiz HUD ── */
+  .hud {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .hud-left { display:flex; align-items:center; gap:10px; }
+  .hud-center { text-align: center; }
+  .hud-right { display:flex; align-items:center; justify-content:flex-end; gap:10px; }
+
+  .q-counter { font-size: .8rem; color: var(--muted); font-weight: 600; }
+  .q-counter span { color: var(--text); }
+
+  /* XP Bar */
+  .xp-wrap { display:flex; align-items:center; gap:8px; }
+  .xp-label { font-size:.72rem; color:var(--cyan); font-weight:700; white-space:nowrap; }
+  .xp-bar-track {
+    flex:1; height:6px; background:var(--border);
+    border-radius:999px; overflow:hidden; min-width:80px;
+  }
+  .xp-bar-fill {
+    height:100%; background:linear-gradient(90deg,var(--purple),var(--cyan));
+    border-radius:999px; transition:width .4s ease;
+  }
+
+  /* Streak */
+  .streak-badge {
+    display:flex; align-items:center; gap:5px;
+    background: var(--card); border:1px solid var(--border);
+    border-radius:999px; padding:4px 10px;
+    font-size:.8rem; font-weight:700;
+    transition: all .2s;
+  }
+  .streak-badge.hot { border-color:var(--yellow); color:var(--yellow); background:#f59e0b11; }
+  .streak-badge.fire { border-color:var(--red); color:var(--red); background:var(--red-dim); }
+
+  /* Timer */
+  .timer-ring { position:relative; width:48px; height:48px; flex-shrink:0; }
+  .timer-ring svg { transform: rotate(-90deg); }
+  .timer-ring circle { fill:none; stroke-width:3.5; }
+  .timer-track { stroke: var(--border); }
+  .timer-fill { stroke:var(--cyan); stroke-linecap:round; transition: stroke-dashoffset .9s linear, stroke .3s; }
+  .timer-num {
+    position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:.85rem; font-weight:800; color:var(--cyan);
+    transition: color .3s;
+  }
+
+  /* Progress bar */
+  .progress-track {
+    height: 4px; background: var(--border); border-radius:999px;
+    margin-bottom: 18px; overflow: hidden;
+  }
+  .progress-fill {
+    height:100%; background:linear-gradient(90deg,var(--purple),var(--cyan));
+    border-radius:999px; transition: width .4s ease;
+  }
+
+  /* Concept tag */
+  .concept-tag {
+    display:inline-block;
+    background: var(--purple-dim);
+    color: #a78bfa;
+    border: 1px solid #a78bfa44;
+    border-radius:999px; font-size:.72rem; font-weight:600;
+    padding: 3px 12px; margin-bottom:12px;
+    letter-spacing:.04em; text-transform:uppercase;
+  }
+
+  /* Difficulty dots */
+  .diff-dots { display:flex; gap:4px; align-items:center; }
+  .diff-dot { width:8px; height:8px; border-radius:50%; background:var(--border); }
+  .diff-dot.lit.easy  { background:var(--green); }
+  .diff-dot.lit.med   { background:var(--yellow); }
+  .diff-dot.lit.hard  { background:var(--red); }
+
+  /* Question card */
+  .q-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  .q-meta { display:flex; align-items:center; justify-content:space-between; margin-bottom:14px; }
+  .q-text { font-size: 1.05rem; line-height:1.6; font-weight:500; }
+
+  /* Options */
+  .options { display:grid; gap:10px; }
+  .opt {
+    background: var(--card);
+    border: 1.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 18px;
+    cursor: pointer;
+    display: flex; align-items: center; gap: 14px;
+    transition: border-color .15s, background .15s, transform .1s;
+    text-align: left;
+    font-size: .95rem; color: var(--text);
+    font-family: inherit;
+    width: 100%;
+  }
+  .opt:hover:not(:disabled) { border-color: var(--cyan); background: var(--cyan-dim); }
+  .opt:active:not(:disabled) { transform: scale(.99); }
+  .opt-key {
+    width:28px; height:28px; flex-shrink:0;
+    border:1.5px solid var(--border); border-radius:7px;
+    display:flex; align-items:center; justify-content:center;
+    font-size:.75rem; font-weight:700; color:var(--muted);
+    transition: all .15s;
+  }
+  .opt:hover:not(:disabled) .opt-key { border-color:var(--cyan); color:var(--cyan); }
+  .opt.correct { border-color:var(--green)!important; background:var(--green-dim)!important; }
+  .opt.correct .opt-key { border-color:var(--green); color:var(--green); background:var(--green-dim); }
+  .opt.wrong   { border-color:var(--red)!important;   background:var(--red-dim)!important; animation: shake .35s; }
+  .opt.wrong .opt-key   { border-color:var(--red);   color:var(--red);   background:var(--red-dim); }
+  .opt.dimmed { opacity:.4; }
+  .opt:disabled { cursor:default; }
+
+  @keyframes shake {
+    0%,100%{transform:translateX(0)}
+    20%{transform:translateX(-7px)}
+    40%{transform:translateX(7px)}
+    60%{transform:translateX(-5px)}
+    80%{transform:translateX(5px)}
+  }
+
+  /* Explanation box */
+  .explanation {
+    display:none;
+    background:var(--card); border:1px solid var(--border);
+    border-radius:var(--radius); padding:16px 18px;
+    font-size:.88rem; line-height:1.65; color:#a0aec0;
+    margin-bottom:14px; animation: fadeIn .3s ease;
+  }
+  .explanation.show { display:block; }
+  .explanation strong { color:var(--text); }
+
+  /* Next btn row */
+  .next-row { display:flex; justify-content:flex-end; gap:10px; }
+
+  /* ── Level Up Overlay ── */
+  .levelup-overlay {
+    display:none; position:fixed; inset:0;
+    background:#00000099; z-index:100;
+    align-items:center; justify-content:center;
+    animation: fadeIn .2s;
+  }
+  .levelup-overlay.show { display:flex; }
+  .levelup-box {
+    background:var(--surface); border:1px solid var(--cyan);
+    border-radius:20px; padding:40px 48px; text-align:center;
+    box-shadow: 0 0 60px var(--cyan-dim);
+    animation: popIn .35s cubic-bezier(.34,1.56,.64,1);
+  }
+  @keyframes popIn { from{transform:scale(.7);opacity:0} to{transform:scale(1);opacity:1} }
+  .levelup-box .level-icon { font-size:3.5rem; margin-bottom:12px; }
+  .levelup-box h2 { font-size:1.6rem; font-weight:800; color:var(--cyan); margin-bottom:6px; }
+  .levelup-box p { color:var(--muted); font-size:.95rem; }
+
+  /* ── Toast ── */
+  #toast {
+    position:fixed; bottom:28px; left:50%; transform:translateX(-50%);
+    background:var(--card); border:1px solid var(--border); border-radius:999px;
+    padding:10px 20px; font-size:.85rem; font-weight:600;
+    display:none; z-index:200; white-space:nowrap;
+    animation: slideUp .25s ease;
+  }
+  @keyframes slideUp { from{opacity:0;transform:translateX(-50%) translateY(12px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }
+
+  /* ── Results ── */
+  .results-card {
+    background: var(--surface); border:1px solid var(--border);
+    border-radius: var(--radius); padding:32px 28px;
+    text-align:center;
+  }
+  .rank-icon { font-size:4.5rem; margin-bottom:12px; line-height:1; }
+  .rank-title { font-size:1.8rem; font-weight:800; margin-bottom:4px; }
+  .rank-sub { color:var(--muted); font-size:.9rem; margin-bottom:24px; }
+
+  .score-big {
+    font-size:3.5rem; font-weight:900;
+    background:linear-gradient(135deg,var(--cyan),var(--purple));
+    -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+    background-clip:text; line-height:1; margin-bottom:4px;
+  }
+  .score-denom { font-size:1rem; color:var(--muted); margin-bottom:24px; }
+
+  .result-stats {
+    display: grid; grid-template-columns: repeat(3,1fr); gap:12px;
+    margin-bottom:24px;
+  }
+  .rs-chip {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:10px; padding:14px 8px; text-align:center;
+  }
+  .rs-chip .rs-num { font-size:1.4rem; font-weight:800; }
+  .rs-chip .rs-lbl { font-size:.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:.05em; margin-top:3px; }
+  .rs-chip.good .rs-num { color:var(--green); }
+  .rs-chip.warn .rs-num { color:var(--yellow); }
+  .rs-chip.info .rs-num { color:var(--cyan); }
+
+  .wrong-list { text-align:left; margin-bottom:24px; }
+  .wrong-list h3 { font-size:.85rem; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin-bottom:10px; }
+  .wrong-item {
+    display:flex; align-items:center; gap:10px;
+    background:var(--card); border:1px solid var(--border);
+    border-radius:9px; padding:10px 14px; margin-bottom:8px;
+    font-size:.83rem;
+  }
+  .wrong-dot { width:8px; height:8px; border-radius:50%; background:var(--red); flex-shrink:0; }
+  .wrong-concept { color:var(--red); font-weight:700; white-space:nowrap; }
+  .wrong-sep { color:var(--border); }
+  .wrong-q { color:var(--muted); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+
+  .results-actions { display:flex; gap:10px; }
+
+  /* Achievements row */
+  .achievements { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; margin-bottom:20px; }
+  .ach {
+    background:var(--card); border:1px solid var(--border);
+    border-radius:9px; padding:8px 14px;
+    font-size:.78rem; font-weight:600; display:flex; align-items:center; gap:6px;
+  }
+  .ach.unlocked { border-color:var(--yellow); color:var(--yellow); background:#f59e0b11; }
+  .ach.locked { opacity:.35; }
+
+  /* Responsive */
+  @media(max-width:500px) {
+    .start-stats { grid-template-columns: repeat(3,1fr); }
+    .hud { grid-template-columns: 1fr auto; }
+    .hud-right { display:none; }
+    .result-stats { grid-template-columns: repeat(3,1fr); }
+  }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     START SCREEN
+════════════════════════════════════════════ -->
+<div class="screen active" id="screen-start">
+  <div class="start-hero">
+    <div class="start-badge">System Design · 30 Concepts</div>
+    <h1>Can You Level Up?</h1>
+    <p>30 multiple-choice questions. Earn XP, build streaks, and unlock your rank. Every question covers a concept from the guide.</p>
+
+    <div class="start-stats">
+      <div class="stat-chip"><div class="num">30</div><div class="lbl">Questions</div></div>
+      <div class="stat-chip"><div class="num">15s</div><div class="lbl">Per question</div></div>
+      <div class="stat-chip"><div class="num">6</div><div class="lbl">Ranks</div></div>
+    </div>
+
+    <div class="rank-preview">
+      <div class="rank-pill r1">📚 Keep Studying</div>
+      <div class="rank-pill r2">🎓 Junior Dev</div>
+      <div class="rank-pill r3">⚙️ Mid-level</div>
+      <div class="rank-pill r4">🚀 Senior Eng</div>
+      <div class="rank-pill r5">💡 Staff Eng</div>
+      <div class="rank-pill r6">🏆 Principal</div>
+    </div>
+
+    <button class="btn btn-primary" onclick="startQuiz()">Start Quiz →</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     QUIZ SCREEN
+════════════════════════════════════════════ -->
+<div class="screen" id="screen-quiz">
+
+  <!-- HUD -->
+  <div class="hud">
+    <div class="hud-left">
+      <div class="xp-wrap">
+        <div class="xp-label" id="xp-label">Lv 1</div>
+        <div class="xp-bar-track"><div class="xp-bar-fill" id="xp-bar" style="width:0%"></div></div>
+      </div>
+    </div>
+    <div class="hud-center">
+      <div class="q-counter">Q <span id="q-num">1</span> / 30</div>
+    </div>
+    <div class="hud-right">
+      <div class="streak-badge" id="streak-badge">🔥 <span id="streak-num">0</span></div>
+      <div class="timer-ring">
+        <svg width="48" height="48" viewBox="0 0 48 48">
+          <circle class="timer-track" cx="24" cy="24" r="20"/>
+          <circle class="timer-fill" id="timer-circle" cx="24" cy="24" r="20"
+            stroke-dasharray="125.66" stroke-dashoffset="0"/>
+        </svg>
+        <div class="timer-num" id="timer-num">15</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-track">
+    <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+  </div>
+
+  <!-- Question Card -->
+  <div class="q-card">
+    <div class="q-meta">
+      <div class="concept-tag" id="concept-tag">Concept</div>
+      <div class="diff-dots" id="diff-dots">
+        <div class="diff-dot" id="d1"></div>
+        <div class="diff-dot" id="d2"></div>
+        <div class="diff-dot" id="d3"></div>
+      </div>
+    </div>
+    <div class="q-text" id="q-text">Loading...</div>
+  </div>
+
+  <!-- Options -->
+  <div class="options" id="options"></div>
+
+  <!-- Explanation -->
+  <div class="explanation" id="explanation"></div>
+
+  <!-- Next -->
+  <div class="next-row">
+    <button class="btn btn-ghost" id="next-btn" onclick="nextQuestion()" style="display:none">
+      Next →
+    </button>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════
+     RESULTS SCREEN
+════════════════════════════════════════════ -->
+<div class="screen" id="screen-results">
+  <div class="results-card">
+    <div class="rank-icon" id="res-icon">🏆</div>
+    <div class="rank-title" id="res-title">Distinguished Architect</div>
+    <div class="rank-sub" id="res-sub">You nailed it</div>
+
+    <div class="score-big" id="res-score">0</div>
+    <div class="score-denom">correct out of 30</div>
+
+    <div class="result-stats">
+      <div class="rs-chip good"><div class="rs-num" id="rs-acc">0%</div><div class="rs-lbl">Accuracy</div></div>
+      <div class="rs-chip info"><div class="rs-num" id="rs-xp">0</div><div class="rs-lbl">XP Earned</div></div>
+      <div class="rs-chip warn"><div class="rs-num" id="rs-streak">0</div><div class="rs-lbl">Best Streak</div></div>
+    </div>
+
+    <div class="achievements" id="achievements"></div>
+
+    <div class="wrong-list" id="wrong-list"></div>
+
+    <div class="results-actions">
+      <button class="btn btn-ghost" style="flex:1" onclick="reviewMode()">📖 Review Answers</button>
+      <button class="btn btn-primary" style="flex:1" onclick="restartQuiz()">Play Again</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     LEVEL UP OVERLAY
+════════════════════════════════════════════ -->
+<div class="levelup-overlay" id="levelup-overlay" onclick="closeLevelUp()">
+  <div class="levelup-box">
+    <div class="level-icon" id="lu-icon">⚡</div>
+    <h2 id="lu-title">Level Up!</h2>
+    <p id="lu-sub">You've reached a new rank</p>
+  </div>
+</div>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════
+// QUESTIONS DATA  (30 MCQs — all 30 concepts)
+// ══════════════════════════════════════════
+const QUESTIONS = [
+  {
+    concept: "Client-Server Architecture",
+    difficulty: "easy",
+    q: "Twitter's mobile app sends a request to api.twitter.com and waits for a JSON response containing your timeline. This describes which architecture pattern?",
+    opts: ["Peer-to-Peer networking", "Client-Server architecture", "Event-driven architecture", "Serverless computing"],
+    answer: 1,
+    explain: "<strong>Client-Server:</strong> The mobile app (client) initiates requests; api.twitter.com (server) responds with data. The client owns the UI; the server owns the data and logic. Neither can work without the other — and crucially, the client never touches the database directly."
+  },
+  {
+    concept: "IP Address",
+    difficulty: "easy",
+    q: "Twitter's load balancer exposes a single stable IP to the world, even when hundreds of backend servers change behind it. What is this single stable IP called?",
+    opts: ["Elastic IP", "Virtual IP (VIP)", "Anycast IP", "Static hostname"],
+    answer: 1,
+    explain: "<strong>Virtual IP (VIP):</strong> A single IP address shared across multiple physical servers, typically sitting on a load balancer. When a backend server fails and is replaced, the VIP stays unchanged — clients never notice. It's the stable 'face' of a fleet."
+  },
+  {
+    concept: "DNS",
+    difficulty: "easy",
+    q: "Twitter sets a TTL of 30 seconds on its DNS records instead of the default 24 hours. What is the PRIMARY operational reason?",
+    opts: ["Reduces DNS server load globally", "Enables fast traffic re-routing during outages", "Improves SEO ranking", "Lowers latency for all users"],
+    answer: 1,
+    explain: "<strong>Fast failover:</strong> With a 30s TTL, if a data center fails and Twitter updates the DNS record to point to a healthy DC, clients will re-resolve within 30 seconds. With a 24-hour TTL, clients would keep hitting the broken IP for up to a full day."
+  },
+  {
+    concept: "Proxy / Reverse Proxy",
+    difficulty: "easy",
+    q: "Nginx sits in front of Twitter's API fleet: it terminates TLS, routes requests to correct services, and blocks invalid traffic. Clients think they're talking directly to 'Twitter'. This is a:",
+    opts: ["Forward proxy", "VPN gateway", "Reverse proxy", "CDN edge node"],
+    answer: 2,
+    explain: "<strong>Reverse proxy:</strong> Sits in front of servers and intercepts incoming requests on their behalf. The client never knows how many servers are behind it. Contrast with a forward proxy, which sits in front of clients and hides their identities from the internet."
+  },
+  {
+    concept: "Latency",
+    difficulty: "medium",
+    q: "Twitter's P50 timeline latency is 40ms and P99 is 180ms. A PM says 'average is fine, no action needed.' What is wrong with this reasoning?",
+    opts: [
+      "P50 and P99 mean the same thing for this use case",
+      "P99 shows 1% of users experience up to 180ms — at Twitter's scale that's millions of people",
+      "Latency targets should only be measured at P100",
+      "The 40ms average is actually too slow for production"
+    ],
+    answer: 1,
+    explain: "<strong>Percentiles over averages:</strong> P99 = 99th percentile — 1% of requests take ≥180ms. At 600M daily timeline loads, 1% is 6 million slow experiences per day. Averages hide the tail. Always measure P95 and P99. The gap between P50 and P99 reveals how many outliers exist."
+  },
+  {
+    concept: "HTTP / HTTPS",
+    difficulty: "easy",
+    q: "Which HTTP method is BOTH idempotent (same result on repeated calls) AND safe (causes no server-side side effects)?",
+    opts: ["POST", "PUT", "DELETE", "GET"],
+    answer: 3,
+    explain: "<strong>GET is safe + idempotent:</strong> It reads data without modifying server state. Calling GET 100 times returns the same result each time (idempotent) and never changes anything (safe). PUT is idempotent but not safe. POST/PATCH are neither. DELETE is idempotent but not safe."
+  },
+  {
+    concept: "APIs",
+    difficulty: "easy",
+    q: "The Timeline Service calls the Tweet Service's API to fetch tweets. When Twitter migrates tweet storage from MySQL to Cassandra, the Timeline Service needs zero code changes. What principle does this demonstrate?",
+    opts: ["Database abstraction layer", "Loose coupling through APIs", "Event sourcing", "Horizontal sharding"],
+    answer: 1,
+    explain: "<strong>Loose coupling via APIs:</strong> The Tweet Service's API is the contract. Consumers (like Timeline Service) depend on the contract, not the implementation. Swap MySQL for Cassandra behind the API — the world outside doesn't know and doesn't care. This is the #1 reason APIs are the backbone of scalable systems."
+  },
+  {
+    concept: "REST API",
+    difficulty: "medium",
+    q: "Twitter's timeline API uses cursor-based pagination (next_cursor=tweet_id) instead of offset-based (?page=3). Why?",
+    opts: [
+      "Cursor pagination uses less bandwidth",
+      "Offset pagination causes missed/duplicate tweets as new items arrive during scrolling",
+      "Cursor pagination is faster to implement",
+      "Offset pagination breaks HTTP authentication"
+    ],
+    answer: 1,
+    explain: "<strong>Cursor stability:</strong> With offset ('skip 40 rows'), new tweets arriving at the top push everything down — you see duplicates or skip items when you load the next page. Cursors anchor to a specific tweet ID, so position is stable regardless of new inserts. Critical for real-time feeds."
+  },
+  {
+    concept: "GraphQL",
+    difficulty: "medium",
+    q: "A GraphQL resolver fetches 10 tweets, then fires 10 separate database queries to get each tweet's author. Total: 11 queries. What is this problem called, and what solves it?",
+    opts: [
+      "Over-fetching — solved by field filtering",
+      "Schema stitching — solved by federation",
+      "N+1 problem — solved by DataLoader (query batching)",
+      "Cache stampede — solved by TTL jitter"
+    ],
+    answer: 2,
+    explain: "<strong>N+1 + DataLoader:</strong> For N records, N extra queries fire for related data. DataLoader collects all author IDs during one event-loop tick, then fires <em>one batched</em> query: SELECT * FROM users WHERE id IN (...). Result: 2 queries instead of 11, regardless of how large N gets."
+  },
+  {
+    concept: "Databases",
+    difficulty: "easy",
+    q: "Twitter uses MySQL for users, Cassandra for tweets, Redis for timelines, and Elasticsearch for search — all in the same system. What is this approach called?",
+    opts: ["Database federation", "Polyglot persistence", "Multi-master replication", "CQRS"],
+    answer: 1,
+    explain: "<strong>Polyglot persistence:</strong> Using multiple different database technologies in one system, each chosen for its strengths. MySQL's relational model for user graphs, Cassandra's write throughput for tweets, Redis's sub-millisecond reads for timelines, Elasticsearch's full-text search for... search. No single database is best for everything."
+  },
+  {
+    concept: "SQL vs NoSQL",
+    difficulty: "medium",
+    q: "You need to store 500 billion tweets with 6,000 writes/second and query pattern: 'tweets by user X, newest first.' Which database is the BEST fit?",
+    opts: ["PostgreSQL with table partitioning", "MySQL with read replicas", "Cassandra", "Redis Sorted Sets"],
+    answer: 2,
+    explain: "<strong>Cassandra:</strong> Wide-column NoSQL, designed for massive write throughput. Partition key = user_id (all of one user's tweets on one node), clustering key = created_at DESC (automatic sort order). Query 'user X newest tweets' is a single partition read — milliseconds at any scale. PostgreSQL/MySQL need complex sharding to approach this."
+  },
+  {
+    concept: "Vertical Scaling",
+    difficulty: "easy",
+    q: "Twitter's early MySQL server is maxed out. They upgrade to the vendor's largest available machine. Six months later, growth demands another upgrade — but there's no bigger machine to buy. What problem just hit?",
+    opts: ["Network bandwidth ceiling", "The vertical scaling ceiling", "Maximum database connection limit", "OS process limit"],
+    answer: 1,
+    explain: "<strong>Vertical scaling ceiling:</strong> There's a physical (and economic) limit to how large a single machine can be. Once you hit it, you must rethink the architecture — shard the database, scale horizontally. This is exactly what forced Twitter's painful 2008–2010 re-architecture from a monolith to a distributed system."
+  },
+  {
+    concept: "Horizontal Scaling",
+    difficulty: "medium",
+    q: "During a major event, Twitter auto-scales its tweet-serving layer from 200 to 2,000 pods in 3 minutes. Which application property MAKES this possible?",
+    opts: [
+      "Fast NVMe SSDs on each pod",
+      "Stateless application design — no session state stored on the pod",
+      "In-memory caching on each pod",
+      "A GraphQL API layer"
+    ],
+    answer: 1,
+    explain: "<strong>Statelessness:</strong> Because no pod holds unique user state (sessions live in Redis, data in DBs), any pod can serve any request. The load balancer freely distributes traffic to all 2,000 pods. If pods stored local sessions, you'd need sticky routing and session migration — scaling would take hours, not minutes."
+  },
+  {
+    concept: "Load Balancers",
+    difficulty: "easy",
+    q: "Twitter's load balancer pings each pod's /health endpoint every 5 seconds. Pod #47 starts returning HTTP 500. What does the load balancer do?",
+    opts: [
+      "Restarts Pod #47 automatically",
+      "Stops routing new requests to Pod #47, keeps routing to healthy pods",
+      "Pauses all traffic until Pod #47 recovers",
+      "Deletes Pod #47 from the cluster permanently"
+    ],
+    answer: 1,
+    explain: "<strong>Health checks + traffic drain:</strong> The load balancer removes unhealthy instances from rotation — silently, with zero user impact. Healthy pods absorb the load. Kubernetes notices the failing pod and schedules a replacement. This combination (LB health check + container orchestration) is how zero-downtime deployments work."
+  },
+  {
+    concept: "Database Indexing",
+    difficulty: "medium",
+    q: "A composite index on (user_id, created_at, tweet_id, text) exists on the tweets table. A query needs only those four columns for user 123. The database serves the query entirely from the index — never touching the main table. What is this index called?",
+    opts: ["Hash index", "Clustered index", "Partial index", "Covering index"],
+    answer: 3,
+    explain: "<strong>Covering index:</strong> The index 'covers' the query — all required columns are in the index itself. No 'heap fetch' (secondary lookup into the main table). This is the fastest possible path: one B-tree traversal, no extra I/O. Critical optimization for hot read paths like timeline fetches."
+  },
+  {
+    concept: "Replication",
+    difficulty: "medium",
+    q: "A user updates their profile bio. They immediately reload their profile page and see the old bio. The system has 1 primary + 5 read replicas with async replication. What caused this?",
+    opts: [
+      "A cache miss served stale data",
+      "DNS TTL cached the old IP",
+      "Replica lag — the read hit a replica that hadn't synced yet",
+      "The write was lost during a shard migration"
+    ],
+    answer: 2,
+    explain: "<strong>Replica lag:</strong> Async replication acknowledges the write immediately, then syncs to replicas in the background (~10ms lag). If the user's read hits a replica before sync, they see stale data. Fix: route the user's own reads to the primary for 1 second after a write (read-your-own-writes consistency)."
+  },
+  {
+    concept: "Sharding",
+    difficulty: "medium",
+    q: "Tweets are sharded by user_id % 1000. A celebrity with 100M followers posts frequently, hammering their shard far beyond all others. What is this problem called?",
+    opts: ["Replication lag", "Write amplification", "Hot shard (hotspot) problem", "Shard key collision"],
+    answer: 2,
+    explain: "<strong>Hot shard:</strong> When a shard key distributes load unevenly — one shard receives a disproportionate amount of traffic. Solutions: use a different shard key (add random suffix to spread writes), virtual shards, or handle the celebrity case specially (fan-out-on-read for accounts above ~1M followers)."
+  },
+  {
+    concept: "Vertical Partitioning",
+    difficulty: "medium",
+    q: "Twitter splits a fat tweets table into tweet_core (id, text, user_id) and tweet_metrics (id, like_count, retweet_count). What is the PRIMARY performance benefit of tweet_core being narrower?",
+    opts: [
+      "Enables tweet_core to use SQL and tweet_metrics to use NoSQL",
+      "More rows fit per DB page → more data in the buffer pool → fewer disk reads",
+      "tweet_core can be sharded independently",
+      "Removes the need for indexes on tweet_metrics"
+    ],
+    answer: 1,
+    explain: "<strong>Page efficiency:</strong> A DB page is typically 8–16 KB. Narrower rows = more rows per page = more data in the OS buffer cache per MB of RAM. Like_count updates (which happen constantly) no longer cause write contention on tweet text. Two services can cache and scale each partition independently."
+  },
+  {
+    concept: "Caching",
+    difficulty: "hard",
+    q: "You set a TTL of exactly 60 seconds on 10 million cache keys. At T+60s, all keys expire simultaneously and your database gets 10M concurrent queries. What failure mode is this?",
+    opts: ["Cache poisoning", "Cache stampede / thundering herd", "Cold start problem", "Write-through failure"],
+    answer: 1,
+    explain: "<strong>Cache stampede:</strong> Synchronized expiry → all misses hit the DB at once → database overwhelmed. Fix: add random TTL jitter (60s ± random 0–15s) so expirations are staggered. Advanced fix: Probabilistic Early Recomputation (PER) — proactively recompute keys about to expire before they do."
+  },
+  {
+    concept: "Denormalization",
+    difficulty: "hard",
+    q: "When a tweet is posted, Twitter writes the tweet ID into every follower's Redis timeline cache. For Elon Musk (170M followers), this creates 170M cache writes per tweet. What pattern is causing this scaling crisis?",
+    opts: ["Fan-out-on-read", "Write-through caching", "Fan-out-on-write", "Cache-aside pattern"],
+    answer: 2,
+    explain: "<strong>Fan-out-on-write:</strong> Proactively pushing data to all consumers at write time. Great for regular users (< ~100K followers). For celebrities, the math breaks down — 170M writes per tweet is infeasible synchronously. Twitter's real solution: fan-out-on-read for accounts above a follower threshold, merging celebrity tweets at read time."
+  },
+  {
+    concept: "CAP Theorem",
+    difficulty: "hard",
+    q: "Twitter's home timeline is AP. A 20-second network partition occurs. Which experience do users have — and why is this the right choice?",
+    opts: [
+      "503 error page — the app refuses to serve stale data",
+      "Account suspended until partition heals",
+      "Slightly stale timeline — app stays usable, may miss the last few tweets",
+      "Only tweets older than 1 hour are shown"
+    ],
+    answer: 2,
+    explain: "<strong>AP = Available + Partition-tolerant:</strong> The system stays up and returns responses, even if they're slightly stale. A social feed showing tweets from 30 seconds ago is completely acceptable — users don't notice. An error page (CP behavior) would be catastrophic UX for a non-critical feature. CP is reserved for auth and payments where correctness is mandatory."
+  },
+  {
+    concept: "Blob Storage",
+    difficulty: "easy",
+    q: "A user uploads a video. Twitter wants the client to upload directly to S3 — without routing the file through Twitter's own API servers. What mechanism enables this securely?",
+    opts: [
+      "Public S3 bucket with CORS headers",
+      "Presigned URL — time-limited upload permission from S3",
+      "OAuth token passed directly to S3",
+      "API Gateway proxy with streaming"
+    ],
+    answer: 1,
+    explain: "<strong>Presigned URL:</strong> The server generates a time-limited URL (expires in 15 min) using its IAM credentials. The client uploads directly to S3 using this URL. No credentials are exposed to the client; the file never touches your API servers (saving bandwidth and compute); the URL auto-expires. Standard pattern for all major cloud storage."
+  },
+  {
+    concept: "CDN",
+    difficulty: "medium",
+    q: "A viral tweet image gets 50 million views in one hour from a global audience. It's stored in S3. A CDN with 200 global edge nodes is in place. Approximately how many requests reach S3?",
+    opts: [
+      "50 million — CDN only reduces latency, not origin load",
+      "Once per CDN edge node — roughly ~200 requests",
+      "Exactly 1 request total",
+      "Once per country (~195 requests)"
+    ],
+    answer: 1,
+    explain: "<strong>Cache hit ratio:</strong> The first viewer at each edge node triggers a cache miss → S3 fetch → cached at that edge. All subsequent viewers at that edge get a cache hit. With 200 edge nodes, S3 serves ~200 requests instead of 50 million. CDN absorbs 99.9996% of origin load — this is why CDN is non-negotiable for media at scale."
+  },
+  {
+    concept: "WebSockets",
+    difficulty: "easy",
+    q: "TweetDeck columns update with new tweets in real time without the browser ever refreshing. The server sends new tweets to the browser as they arrive — unprompted. What makes this possible?",
+    opts: [
+      "HTTP/2 server push headers",
+      "Short-poll every 500ms",
+      "WebSocket — persistent bidirectional TCP connection",
+      "Service Worker background sync"
+    ],
+    answer: 2,
+    explain: "<strong>WebSockets:</strong> After an initial HTTP upgrade handshake, a persistent full-duplex TCP connection stays open. The server can push frames to the client at any time — no request needed. HTTP polling requires the client to ask repeatedly. For sub-second real-time updates at scale (TweetDeck, live scores, trading), WebSockets are the right tool."
+  },
+  {
+    concept: "Webhooks",
+    difficulty: "easy",
+    q: "A developer builds a customer support bot. Instead of polling 'GET /mentions' every 5 seconds, they give Twitter a URL: 'POST here whenever we're mentioned.' Twitter then pushes event JSON to that URL instantly. This pattern is called:",
+    opts: ["Server-Sent Events (SSE)", "WebSocket subscription", "Webhook", "GraphQL subscription"],
+    answer: 2,
+    explain: "<strong>Webhook = reverse API:</strong> You register a URL; the provider calls you when something happens. Zero polling overhead — your server only gets called when there's a real event. Critical reliability concerns: your server might be down (provider must retry with backoff) and your handler must be idempotent (provider may deliver the same event twice)."
+  },
+  {
+    concept: "Microservices",
+    difficulty: "medium",
+    q: "Twitter's Notification Service crashes and stays down for 30 minutes. In a well-designed microservices architecture, what is the impact on home timelines?",
+    opts: [
+      "Timelines go down — they depend on notification metadata",
+      "Zero impact — timeline loading works normally",
+      "All write operations pause until Notification Service recovers",
+      "The API Gateway blocks all traffic as a safety measure"
+    ],
+    answer: 1,
+    explain: "<strong>Fault isolation:</strong> Microservices fail independently. The Timeline Service has no synchronous dependency on the Notification Service — it reads from its own Redis cache and Cassandra. Notifications are async (via Kafka). So the Notification Service outage affects only notifications. This is the primary architectural benefit of microservices over a monolith."
+  },
+  {
+    concept: "Message Queues",
+    difficulty: "medium",
+    q: "A single tweet_created Kafka event is consumed independently by Fan-out Service, Search Indexer, and Notification Service — all at their own pace, none aware of the others. What Kafka property makes this possible?",
+    opts: [
+      "Kafka broadcasts synchronously to all registered listeners",
+      "Kafka deletes the message after the first consumer reads it",
+      "Kafka retains messages and multiple consumer groups each track their own read offset",
+      "Kafka replicates the message to a separate topic per consumer"
+    ],
+    answer: 2,
+    explain: "<strong>Consumer groups + retention:</strong> Unlike SQS (message deleted after one read), Kafka keeps messages for a configured period. Each consumer group has an independent offset (pointer to where it's read up to). All three services can be at different positions — Fan-out might be caught up while Search Indexer is 5 minutes behind. No data is lost, no coordination needed."
+  },
+  {
+    concept: "Rate Limiting",
+    difficulty: "hard",
+    q: "Twitter uses a token bucket algorithm. Your bucket holds 100 tokens and refills at 10/second. You fire 200 requests in the first second. What happens?",
+    opts: [
+      "All 200 are rejected — the burst is immediately flagged",
+      "First 100 are served (bucket drained), next 100 are rejected with 429",
+      "All 200 are queued and processed over 20 seconds",
+      "The rate limit resets and all 200 are served"
+    ],
+    answer: 1,
+    explain: "<strong>Token bucket burst behavior:</strong> The bucket starts full (100 tokens). Requests consume tokens. The first 100 drain the bucket — served. The next 100 find an empty bucket — rejected with HTTP 429. The bucket refills at 10/sec. This deliberately allows short bursts (legitimate spikes) while throttling sustained high volume (abuse). Contrast leaky bucket: queues and smooths output, no burst allowed."
+  },
+  {
+    concept: "API Gateways",
+    difficulty: "medium",
+    q: "Without an API Gateway, every microservice must implement JWT validation, rate limiting, and request logging independently. Which best describes what an API Gateway solves?",
+    opts: [
+      "Replaces all microservices with a single monolithic service",
+      "Handles database queries faster than individual services",
+      "Centralises cross-cutting concerns so microservices only handle business logic",
+      "Provides an in-memory cache layer across all services"
+    ],
+    answer: 2,
+    explain: "<strong>Cross-cutting concerns centralised:</strong> Auth, rate limiting, routing, SSL termination, tracing — these are needed by every service but have nothing to do with business logic. Moving them to the gateway means: one place to update security policy, consistent logging format across all services, and microservices that are lean and focused on their domain."
+  },
+  {
+    concept: "Idempotency",
+    difficulty: "hard",
+    q: "A payment app sends POST /charge. The server charges the card and returns 201 — but the network drops before the response arrives. The client retries. Without idempotency, what happens next?",
+    opts: [
+      "The server detects the duplicate and rejects it with 409 Conflict",
+      "The server charges the card a second time",
+      "The server returns the original 201 with the same charge ID",
+      "The request is automatically queued for deduplication"
+    ],
+    answer: 1,
+    explain: "<strong>Double charge:</strong> POST is not idempotent by default — each call is a new operation. Fix: client generates a UUID before the first call and sends it as Idempotency-Key header. Server stores (key → result) in Redis. On retry, server finds the key and returns the cached result — card charged exactly once. This is how Stripe, Adyen, and every serious payment API works."
+  }
+];
+
+// ══════════════════════════════════════════
+// GAME STATE
+// ══════════════════════════════════════════
+let state = {};
+
+function resetState() {
+  state = {
+    qIndex: 0,
+    score: 0,
+    xp: 0,
+    level: 1,
+    streak: 0,
+    bestStreak: 0,
+    wrongAnswers: [],
+    answered: false,
+    timerInterval: null,
+    timeLeft: 15,
+    questionStart: 0,
+    achievements: { speedster: false, perfectFirst10: false, noMistakes: false, comboX5: false }
+  };
+}
+
+const LEVELS = [
+  { threshold: 0,   label: "Lv 1", name: "Newbie" },
+  { threshold: 80,  label: "Lv 2", name: "Curious Dev" },
+  { threshold: 180, label: "Lv 3", name: "Mid-level Eng" },
+  { threshold: 320, label: "Lv 4", name: "Senior Eng" },
+  { threshold: 500, label: "Lv 5", name: "Staff Architect" }
+];
+
+const RANKS = [
+  { min: 0,  max: 9,  icon: "📚", title: "Keep Studying",      sub: "Re-read the guide, then come back!" },
+  { min: 10, max: 14, icon: "🎓", title: "Junior Developer",    sub: "Good start — solidify the fundamentals." },
+  { min: 15, max: 19, icon: "⚙️", title: "Mid-level Engineer",  sub: "Solid grasp — push for the senior tier." },
+  { min: 20, max: 23, icon: "🚀", title: "Senior Engineer",     sub: "Strong fundamentals — interview-ready!" },
+  { min: 24, max: 27, icon: "💡", title: "Staff Engineer",      sub: "Deep expertise — you think in systems, not services." },
+  { min: 28, max: 30, icon: "🏆", title: "Principal Architect", sub: "You've mastered all 30 concepts. Go ace that interview." }
+];
+
+// ══════════════════════════════════════════
+// SCREEN TRANSITIONS
+// ══════════════════════════════════════════
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+// ══════════════════════════════════════════
+// START / RESTART
+// ══════════════════════════════════════════
+function startQuiz() {
+  resetState();
+  showScreen('screen-quiz');
+  renderQuestion();
+}
+function restartQuiz() {
+  resetState();
+  showScreen('screen-quiz');
+  renderQuestion();
+}
+
+// ══════════════════════════════════════════
+// RENDER QUESTION
+// ══════════════════════════════════════════
+function renderQuestion() {
+  const q = QUESTIONS[state.qIndex];
+  state.answered = false;
+  state.questionStart = Date.now();
+
+  // Progress
+  const pct = (state.qIndex / 30) * 100;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('q-num').textContent = state.qIndex + 1;
+
+  // Concept + difficulty
+  document.getElementById('concept-tag').textContent = q.concept;
+  const diffs = ['d1','d2','d3'];
+  const litMap = { easy:1, medium:2, hard:3 };
+  const lit = litMap[q.difficulty];
+  diffs.forEach((id, i) => {
+    const el = document.getElementById(id);
+    el.className = 'diff-dot' + (i < lit ? ` lit ${q.difficulty}` : '');
+  });
+
+  // Question text
+  document.getElementById('q-text').textContent = q.q;
+
+  // Options
+  const keys = ['A','B','C','D'];
+  const container = document.getElementById('options');
+  container.innerHTML = '';
+  q.opts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt';
+    btn.innerHTML = `<span class="opt-key">${keys[i]}</span><span>${opt}</span>`;
+    btn.onclick = () => selectAnswer(i);
+    container.appendChild(btn);
+  });
+
+  // Explanation
+  const exp = document.getElementById('explanation');
+  exp.classList.remove('show');
+  exp.innerHTML = '';
+
+  // Next button
+  document.getElementById('next-btn').style.display = 'none';
+
+  // Update XP bar
+  updateXPBar();
+
+  // Start timer
+  startTimer();
+}
+
+// ══════════════════════════════════════════
+// TIMER
+// ══════════════════════════════════════════
+function startTimer() {
+  clearInterval(state.timerInterval);
+  state.timeLeft = 15;
+  updateTimerUI(15);
+
+  state.timerInterval = setInterval(() => {
+    state.timeLeft--;
+    updateTimerUI(state.timeLeft);
+    if (state.timeLeft <= 0) {
+      clearInterval(state.timerInterval);
+      if (!state.answered) timeOut();
+    }
+  }, 1000);
+}
+
+function updateTimerUI(t) {
+  const num = document.getElementById('timer-num');
+  const circle = document.getElementById('timer-circle');
+  const circumference = 125.66;
+  const offset = circumference * (1 - t / 15);
+  circle.style.strokeDashoffset = offset;
+
+  num.textContent = t;
+  const isRed = t <= 5;
+  const isYellow = t <= 9 && t > 5;
+  circle.style.stroke = isRed ? 'var(--red)' : isYellow ? 'var(--yellow)' : 'var(--cyan)';
+  num.style.color = isRed ? 'var(--red)' : isYellow ? 'var(--yellow)' : 'var(--cyan)';
+}
+
+function timeOut() {
+  if (state.answered) return;
+  state.answered = true;
+  // Reveal correct answer
+  const q = QUESTIONS[state.qIndex];
+  const opts = document.querySelectorAll('.opt');
+  opts.forEach((btn, i) => {
+    btn.disabled = true;
+    if (i === q.answer) btn.classList.add('correct');
+    else btn.classList.add('dimmed');
+  });
+  showExplanation(q);
+  loseStreak();
+  state.wrongAnswers.push({ concept: q.concept, q: q.q.substring(0, 70) + '…' });
+  showToast("⏰ Time's up!");
+  document.getElementById('next-btn').style.display = 'block';
+}
+
+// ══════════════════════════════════════════
+// SELECT ANSWER
+// ══════════════════════════════════════════
+function selectAnswer(chosen) {
+  if (state.answered) return;
+  state.answered = true;
+  clearInterval(state.timerInterval);
+
+  const q = QUESTIONS[state.qIndex];
+  const isCorrect = chosen === q.answer;
+  const elapsed = (Date.now() - state.questionStart) / 1000;
+
+  const opts = document.querySelectorAll('.opt');
+  opts.forEach((btn, i) => {
+    btn.disabled = true;
+    if (i === q.answer) btn.classList.add('correct');
+    else if (i === chosen && !isCorrect) btn.classList.add('wrong');
+    else btn.classList.add('dimmed');
+  });
+
+  showExplanation(q);
+  document.getElementById('next-btn').style.display = 'block';
+
+  if (isCorrect) {
+    state.score++;
+    state.streak++;
+    if (state.streak > state.bestStreak) state.bestStreak = state.streak;
+
+    // XP calculation
+    let xpGain = 10;
+    if (elapsed < 5) xpGain += 5;   // speed bonus
+    if (state.streak >= 3) xpGain += 5;  // streak bonus
+    if (state.streak >= 5) xpGain += 5;  // hot streak
+    if (q.difficulty === 'medium') xpGain += 2;
+    if (q.difficulty === 'hard') xpGain += 5;
+
+    const prevLevel = state.level;
+    state.xp += xpGain;
+    updateXPBar();
+    checkLevelUp(prevLevel);
+
+    // Toast
+    const toastMsg = state.streak >= 5 ? `🔥 ${state.streak} streak! +${xpGain} XP` :
+                     state.streak >= 3 ? `⚡ Combo x${state.streak}! +${xpGain} XP` :
+                     elapsed < 5       ? `⚡ Speed bonus! +${xpGain} XP` : `✓ +${xpGain} XP`;
+    showToast(toastMsg);
+
+    // Achievements
+    if (elapsed < 5 && !state.achievements.speedster) {
+      state.achievements.speedster = true;
+      setTimeout(() => showToast('🏅 Achievement: Speed Demon!'), 800);
+    }
+    if (state.streak >= 5 && !state.achievements.comboX5) {
+      state.achievements.comboX5 = true;
+      setTimeout(() => showToast('🏅 Achievement: On Fire!'), 800);
+    }
+    if (state.qIndex === 9 && state.score === 10 && !state.achievements.perfectFirst10) {
+      state.achievements.perfectFirst10 = true;
+      setTimeout(() => showToast('🏅 Perfect first 10!'), 1000);
+    }
+  } else {
+    loseStreak();
+    state.wrongAnswers.push({ concept: q.concept, q: q.q.substring(0, 70) + '…' });
+    showToast('✗ Incorrect');
+  }
+
+  updateStreakBadge();
+}
+
+function loseStreak() {
+  state.streak = 0;
+  updateStreakBadge();
+}
+
+function updateStreakBadge() {
+  const badge = document.getElementById('streak-badge');
+  const num = document.getElementById('streak-num');
+  num.textContent = state.streak;
+  badge.className = 'streak-badge';
+  if (state.streak >= 5) badge.classList.add('fire');
+  else if (state.streak >= 3) badge.classList.add('hot');
+}
+
+function showExplanation(q) {
+  const exp = document.getElementById('explanation');
+  exp.innerHTML = q.explain;
+  exp.classList.add('show');
+}
+
+// ══════════════════════════════════════════
+// XP & LEVELS
+// ══════════════════════════════════════════
+function updateXPBar() {
+  const lvlData = getCurrentLevel();
+  const nextData = LEVELS[state.level] || null;
+  const label = document.getElementById('xp-label');
+  const bar = document.getElementById('xp-bar');
+
+  label.textContent = lvlData.label;
+
+  if (!nextData) {
+    bar.style.width = '100%';
+  } else {
+    const prevThreshold = lvlData.threshold;
+    const nextThreshold = nextData.threshold;
+    const pct = ((state.xp - prevThreshold) / (nextThreshold - prevThreshold)) * 100;
+    bar.style.width = Math.min(100, Math.max(0, pct)) + '%';
+  }
+}
+
+function getCurrentLevel() {
+  let lvl = LEVELS[0];
+  for (let i = LEVELS.length - 1; i >= 0; i--) {
+    if (state.xp >= LEVELS[i].threshold) { lvl = LEVELS[i]; state.level = i + 1; break; }
+  }
+  return lvl;
+}
+
+function checkLevelUp(prevLevel) {
+  const newLevel = state.level;
+  if (newLevel > prevLevel) {
+    const lvlData = LEVELS[newLevel - 1];
+    document.getElementById('lu-icon').textContent = ['⚡','🔥','🚀','🏆'][newLevel - 2] || '⭐';
+    document.getElementById('lu-title').textContent = 'Level Up!';
+    document.getElementById('lu-sub').textContent = `You reached ${lvlData.label}: ${lvlData.name}`;
+    document.getElementById('levelup-overlay').classList.add('show');
+    setTimeout(closeLevelUp, 2200);
+  }
+}
+function closeLevelUp() {
+  document.getElementById('levelup-overlay').classList.remove('show');
+}
+
+// ══════════════════════════════════════════
+// NEXT QUESTION
+// ══════════════════════════════════════════
+function nextQuestion() {
+  state.qIndex++;
+  if (state.qIndex >= QUESTIONS.length) {
+    showResults();
+  } else {
+    renderQuestion();
+  }
+}
+
+// ══════════════════════════════════════════
+// TOAST
+// ══════════════════════════════════════════
+let toastTimeout;
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.style.display = 'block';
+  clearTimeout(toastTimeout);
+  toastTimeout = setTimeout(() => { toast.style.display = 'none'; }, 1800);
+}
+
+// ══════════════════════════════════════════
+// RESULTS
+// ══════════════════════════════════════════
+function showResults() {
+  clearInterval(state.timerInterval);
+
+  // No mistakes achievement
+  if (state.wrongAnswers.length === 0) state.achievements.noMistakes = true;
+
+  const rank = RANKS.find(r => state.score >= r.min && state.score <= r.max) || RANKS[0];
+  const accuracy = Math.round((state.score / 30) * 100);
+
+  document.getElementById('res-icon').textContent = rank.icon;
+  document.getElementById('res-title').textContent = rank.title;
+  document.getElementById('res-sub').textContent = rank.sub;
+
+  // Animate score count-up
+  const scoreEl = document.getElementById('res-score');
+  let count = 0;
+  const target = state.score;
+  const interval = setInterval(() => {
+    count++;
+    scoreEl.textContent = count;
+    if (count >= target) clearInterval(interval);
+  }, 60);
+
+  document.getElementById('rs-acc').textContent = accuracy + '%';
+  document.getElementById('rs-xp').textContent = state.xp;
+  document.getElementById('rs-streak').textContent = state.bestStreak;
+
+  // Achievements
+  const achContainer = document.getElementById('achievements');
+  const achs = [
+    { key:'speedster',     icon:'⚡', label:'Speed Demon',      desc:'Answer in under 5s' },
+    { key:'comboX5',       icon:'🔥', label:'On Fire',           desc:'5-in-a-row streak' },
+    { key:'perfectFirst10',icon:'💯', label:'Perfect Start',     desc:'First 10 all correct' },
+    { key:'noMistakes',    icon:'🏅', label:'Flawless',          desc:'Zero wrong answers' }
+  ];
+  achContainer.innerHTML = '';
+  achs.forEach(a => {
+    const el = document.createElement('div');
+    el.className = 'ach ' + (state.achievements[a.key] ? 'unlocked' : 'locked');
+    el.innerHTML = `${a.icon} ${a.label}`;
+    el.title = a.desc;
+    achContainer.appendChild(el);
+  });
+
+  // Wrong answers list
+  const wrongList = document.getElementById('wrong-list');
+  if (state.wrongAnswers.length === 0) {
+    wrongList.innerHTML = '<h3>Missed Concepts</h3><p style="color:var(--green);font-size:.88rem;margin-top:8px">🎉 Perfect score — no missed concepts!</p>';
+  } else {
+    let html = `<h3>Review These (${state.wrongAnswers.length} concept${state.wrongAnswers.length > 1 ? 's' : ''})</h3>`;
+    state.wrongAnswers.forEach(w => {
+      html += `<div class="wrong-item">
+        <div class="wrong-dot"></div>
+        <span class="wrong-concept">${w.concept}</span>
+        <span class="wrong-sep">·</span>
+        <span class="wrong-q">${w.q}</span>
+      </div>`;
+    });
+    wrongList.innerHTML = html;
+  }
+
+  showScreen('screen-results');
+}
+
+// ══════════════════════════════════════════
+// REVIEW MODE (show all questions + correct answers)
+// ══════════════════════════════════════════
+function reviewMode() {
+  // Build a simple full-page review
+  const w = window.open('', '_blank');
+  let html = `<!DOCTYPE html><html><head><meta charset="UTF-8">
+  <title>System Design Quiz — Answer Review</title>
+  <style>
+    body{font-family:system-ui,sans-serif;background:#07070f;color:#e2e8f0;padding:24px;max-width:760px;margin:0 auto}
+    h1{background:linear-gradient(135deg,#00d4ff,#7c3aed);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:6px;font-size:1.6rem}
+    p.sub{color:#64748b;margin-bottom:28px;font-size:.9rem}
+    .item{background:#0f0f1e;border:1px solid #1f1f3a;border-radius:12px;padding:20px;margin-bottom:16px}
+    .meta{display:flex;justify-content:space-between;margin-bottom:10px}
+    .tag{background:#7c3aed22;color:#a78bfa;border:1px solid #a78bfa44;border-radius:999px;font-size:.7rem;padding:3px 10px;font-weight:700;text-transform:uppercase}
+    .num{color:#64748b;font-size:.8rem;font-weight:600}
+    .q{font-size:.98rem;font-weight:500;line-height:1.6;margin-bottom:14px}
+    .opts{display:grid;gap:8px}
+    .opt{background:#14142a;border:1.5px solid #1f1f3a;border-radius:10px;padding:11px 16px;font-size:.88rem;display:flex;gap:12px;align-items:center}
+    .opt.correct{border-color:#10b981;background:#10b98111;color:#10b981}
+    .opt-k{width:24px;height:24px;border:1.5px solid #1f1f3a;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:.72rem;font-weight:700;color:#64748b;flex-shrink:0}
+    .opt.correct .opt-k{border-color:#10b981;color:#10b981}
+    .explain{background:#14142a;border:1px solid #1f1f3a;border-radius:9px;padding:12px 16px;font-size:.83rem;line-height:1.65;color:#a0aec0;margin-top:12px}
+    strong{color:#e2e8f0}
+    @media(prefers-color-scheme:light){body{background:#f8fafc;color:#1e293b}.item{background:#fff;border-color:#e2e8f0}.opt{background:#f1f5f9;border-color:#e2e8f0}.opt.correct{border-color:#10b981;background:#f0fdf4}.explain{background:#f1f5f9;border-color:#e2e8f0;color:#475569}strong{color:#1e293b}}
+  </style></head><body>
+  <h1>Answer Review — All 30 Questions</h1>
+  <p class="sub">Correct answers highlighted in green. Read the explanation to understand why.</p>`;
+
+  const keys = ['A','B','C','D'];
+  QUESTIONS.forEach((q, i) => {
+    html += `<div class="item">
+      <div class="meta"><span class="tag">${q.concept}</span><span class="num">Q${i+1} · ${q.difficulty}</span></div>
+      <div class="q">${q.q}</div>
+      <div class="opts">${q.opts.map((o, j) => `<div class="opt ${j===q.answer?'correct':''}"><span class="opt-k">${keys[j]}</span><span>${o}</span></div>`).join('')}</div>
+      <div class="explain">${q.explain}</div>
+    </div>`;
+  });
+  html += `</body></html>`;
+  w.document.write(html);
+  w.document.close();
+}
+
+// keyboard shortcuts
+document.addEventListener('keydown', e => {
+  const map = { KeyA: 0, KeyB: 1, KeyC: 2, KeyD: 3 };
+  if (map[e.code] !== undefined && !state.answered) {
+    selectAnswer(map[e.code]);
+    return;
+  }
+  if ((e.code === 'Enter' || e.code === 'Space') && state.answered) {
+    const nxt = document.getElementById('next-btn');
+    if (nxt.style.display !== 'none') nextQuestion();
+  }
+});
+</script>
+</body>
+</html>

@@ -7,6 +7,8 @@
 ![Interview Ready](https://img.shields.io/badge/interview-ready-green)
 ![Twitter/X Example](https://img.shields.io/badge/example-Twitter%2FX-black)
 
+> 🎮 **Ready to test yourself?** Open [quiz.html](./quiz.html) in your browser for the interactive MCQ quiz with XP, streaks, and a final rank.
+
 ---
 
 ## Table of Contents
@@ -69,6 +71,11 @@
 - [Interview Cheat Sheet](#interview-cheat-sheet)
 - [10 Classic Interview Questions](#10-classic-interview-questions)
 - [External Resources](#external-resources)
+
+**Knowledge Quiz**
+- [Round 1 — Foundations (15 × 1pt)](#round-1--foundations-1-pt-each)
+- [Round 2 — Applied Scenarios (10 × 2pt)](#round-2--applied-scenarios-2-pts-each)
+- [Round 3 — Architect's Table (5 × 3pt)](#round-3--architects-table-3-pts-each)
 
 ---
 
@@ -1890,10 +1897,11 @@ This is a simple key-value relationship with time-range queries (`bookmarks by u
 
 > **Final Score Check**
 >
-> | Score | Verdict |
-> |-------|---------|
-> | 45–50 | Senior engineer level — go ace that interview |
-> | 40–44 | Interview-ready — brush up on any questions you missed |
-> | 30–39 | Solid foundation — re-read the sections for wrong answers |
-> | 20–29 | Re-read the full guide, then retake |
-> | Below 20 | Start from Part 1 and work through systematically |
+> | Score | Rank | Verdict |
+> |-------|------|---------|
+> | 45–50 | 🏆 Principal Architect | Mastered all 30 — go ace that interview |
+> | 38–44 | 💡 Staff Engineer | Deep expertise — review any misses and you're set |
+> | 30–37 | 🚀 Senior Engineer | Interview-ready — brush up on weak spots |
+> | 20–29 | ⚙️ Mid-level Engineer | Solid foundation — re-read the sections you missed |
+> | 10–19 | 🎓 Junior Developer | Good start — re-read the full guide then retake |
+> | Below 10 | 📚 Keep Studying | Start from Part 1 and work through systematically |
