@@ -1307,3 +1307,593 @@ Curated links — these replace long explanations here and are kept up-to-date b
 ---
 
 *All 30 concepts illustrated through a single Twitter/X system design. Every request you make on Twitter touches at least 15 of these concepts simultaneously.*
+
+---
+
+## Knowledge Quiz
+
+> **How to use:** Read each question, form your answer in your head (or write it down), then click **Show Answer** to check. Three rounds — each harder than the last.
+>
+> **Scoring:**
+> - Round 1 — Foundations: 15 questions (1 pt each)
+> - Round 2 — Applied Scenarios: 10 questions (2 pts each)
+> - Round 3 — Architect's Table: 5 questions (3 pts each)
+>
+> **50 pts total.** 40+ = interview-ready. 30–39 = review weak areas. Below 30 = re-read the guide.
+
+---
+
+### Round 1 — Foundations (1 pt each)
+
+*Definitions, analogies, and basic recall across all 30 concepts.*
+
+---
+
+**Q1.** You type `twitter.com` in your browser. Before a single byte of content is returned, name the two networking concepts that have already fired.
+
+<details>
+<summary>Show Answer</summary>
+
+**DNS** (resolves `twitter.com` → IP address) and **TCP handshake over HTTP/HTTPS** (the browser opens a connection to that IP). If it's HTTPS, TLS negotiation also happens before any content — so technically three steps before content arrives.
+
+</details>
+
+---
+
+**Q2.** What is the difference between a **forward proxy** and a **reverse proxy**? Give one real-world use case for each.
+
+<details>
+<summary>Show Answer</summary>
+
+- **Forward proxy:** Sits between *clients* and the internet. Hides the client. Use case: a corporate network routing all employee traffic through a proxy for content filtering or to give outbound calls a single whitelisted IP.
+- **Reverse proxy:** Sits between the *internet* and your servers. Hides the servers. Use case: Nginx in front of your API fleet — handles TLS termination, load distribution, and DDoS absorption.
+
+</details>
+
+---
+
+**Q3.** A junior engineer says "P50 latency is 40ms — we're fine." Why is this potentially dangerous?
+
+<details>
+<summary>Show Answer</summary>
+
+P50 (median) means half of users are faster than 40ms — but says nothing about slow users. P99 could be 4,000ms: 1% of users are waiting 4 seconds. For a system with 1 million daily users that's 10,000 people with a terrible experience. Always look at **P95 and P99**, not just the average or median.
+
+</details>
+
+---
+
+**Q4.** What does **stateless** mean in the context of REST, and why is it required for horizontal scaling?
+
+<details>
+<summary>Show Answer</summary>
+
+A stateless server stores no client session data between requests. Every request carries everything the server needs (auth token, parameters). Because no server holds special state for a user, **any server in the fleet can handle any request** — the load balancer can freely distribute traffic. If servers were stateful (e.g., session stored in local memory), you'd need sticky sessions, and losing a server would lose all its users' sessions.
+
+</details>
+
+---
+
+**Q5.** When would you choose **GraphQL over REST**? When would you stick with REST?
+
+<details>
+<summary>Show Answer</summary>
+
+**Choose GraphQL when:**
+- Multiple clients (mobile, web, partner) need different shapes of the same data
+- You want to reduce over-fetching (getting unused fields) and under-fetching (multiple round trips)
+- You need a self-documenting, strongly typed schema
+
+**Stick with REST when:**
+- Simple CRUD with a few clients
+- HTTP caching is important (GraphQL's single POST endpoint doesn't cache by URL)
+- Team is unfamiliar with GraphQL tooling
+- File uploads are common (REST handles these more naturally)
+
+</details>
+
+---
+
+**Q6.** Name the three types of database scaling and what problem each solves.
+
+<details>
+<summary>Show Answer</summary>
+
+1. **Vertical scaling (scale up):** Buy a bigger single machine — more RAM/CPU. Solves: performance ceiling on a single node. Limit: physical/cost ceiling.
+2. **Replication (read scaling):** Copy data to multiple read replicas. Solves: read bottleneck. Limit: doesn't help write throughput.
+3. **Sharding (horizontal/write scaling):** Split data across multiple machines by shard key. Solves: write throughput and storage limits. Limit: makes cross-shard queries very hard.
+
+</details>
+
+---
+
+**Q7.** You have a `tweets` table with 500 billion rows. A query `WHERE user_id = 123 ORDER BY created_at DESC LIMIT 20` is slow. What's the fix and why does it work?
+
+<details>
+<summary>Show Answer</summary>
+
+Add a **composite index on `(user_id, created_at)`**. The database can now jump directly to the block of rows for `user_id = 123` (already stored in sorted order by the index) and return the top 20 without scanning any other rows. Without the index, the database performs a full table scan across all 500 billion rows.
+
+</details>
+
+---
+
+**Q8.** What is the difference between **synchronous** and **asynchronous** replication? What does each trade off?
+
+<details>
+<summary>Show Answer</summary>
+
+- **Synchronous:** Primary waits for at least one replica to confirm the write before acknowledging the client. **Zero data loss**, but higher write latency (waits for the round trip to replica).
+- **Asynchronous:** Primary acknowledges the client immediately, then syncs to replicas in the background. **Lower write latency**, but if the primary crashes before sync, that write is lost. There is also a replica lag window where replicas may return stale reads.
+
+Use sync for financial/auth data; async for content (tweets, likes) where slight staleness is acceptable.
+
+</details>
+
+---
+
+**Q9.** What is **consistent hashing** and why is it better than `hash(key) % N` for sharding?
+
+<details>
+<summary>Show Answer</summary>
+
+With `hash(key) % N`, adding one node (changing N from 10 to 11) remaps ~90% of all keys — a massive resharding event.
+
+**Consistent hashing** places nodes on a virtual ring. Each key maps to the nearest node clockwise. Adding a node only steals keys from its immediate neighbour — ~1/N of all keys move. Much less resharding. Most production systems (Cassandra, DynamoDB, Memcached) use consistent hashing for exactly this reason.
+
+</details>
+
+---
+
+**Q10.** Explain the **CAP theorem** in plain English. Is "CA" a valid option in a real distributed system?
+
+<details>
+<summary>Show Answer</summary>
+
+In a distributed system you can guarantee only two of: **Consistency** (every read returns the latest write), **Availability** (every request gets a response), **Partition tolerance** (system works despite network splits).
+
+**"CA" is not a valid real-world option.** Network partitions *will* happen in any distributed system (cables fail, racks lose power). If you can't tolerate partitions, you have a single-node system — which is trivially consistent and available but fails entirely when that one node goes down. The real choice is always **CP vs AP**.
+
+</details>
+
+---
+
+**Q11.** What are the **three caching layers** between a user and the database? Order them from fastest to slowest.
+
+<details>
+<summary>Show Answer</summary>
+
+1. **Browser cache** — on the user's device, fastest (0ms network), but only helps repeat visits
+2. **CDN edge cache** — closest network node (~5–50ms from user), serves static content and cacheable API responses
+3. **Application cache (Redis/Memcached)** — in the data centre (~0.5ms lookup), stores computed results and hot queries
+4. **Database** — source of truth, slowest (~1–20ms for indexed query, much more for full scans)
+
+*(Browser and CDN are sometimes counted as two; Redis as one — total of 3 before DB.)*
+
+</details>
+
+---
+
+**Q12.** What is the difference between a **message queue** and **event streaming**? Give an example of each.
+
+<details>
+<summary>Show Answer</summary>
+
+| | Message Queue (SQS, RabbitMQ) | Event Streaming (Kafka) |
+|-|-------------------------------|------------------------|
+| Message deleted after read? | Yes | No (configurable retention) |
+| Multiple consumers same msg? | No | Yes (consumer groups) |
+| Replay past events? | No | Yes |
+
+**Queue example:** Background email job — send one email, job consumed and deleted.
+**Streaming example:** Tweet posted → multiple consumers (fan-out, search indexer, notifications) all independently read the same event from Kafka.
+
+</details>
+
+---
+
+**Q13.** What makes an HTTP method **idempotent**? Which standard methods are NOT idempotent?
+
+<details>
+<summary>Show Answer</summary>
+
+An operation is idempotent if calling it once or N times produces the same result.
+
+- **Idempotent:** GET, PUT, DELETE (deleting a non-existent resource returns 404 — same end state: resource doesn't exist)
+- **NOT idempotent:** `POST` (each call creates a new resource) and `PATCH` with relative updates (e.g., `increment_views: 1` called twice = views +2)
+
+To make POST safe for retries, add a client-generated **idempotency key** header.
+
+</details>
+
+---
+
+**Q14.** What is **vertical partitioning** and how is it different from sharding?
+
+<details>
+<summary>Show Answer</summary>
+
+- **Sharding** (horizontal partitioning): splits rows across multiple machines. Same columns, different rows on each shard.
+- **Vertical partitioning**: splits columns into separate tables or services. All rows stay in one logical place, but different column groups are stored/served separately.
+
+Example: Splitting a fat `tweets` table into `tweet_core` (id, text, user_id), `tweet_metrics` (id, likes, retweets), and `tweet_media` (id, urls, sizes). Each sub-table is leaner and can be independently cached, scaled, and secured.
+
+</details>
+
+---
+
+**Q15.** What problem does a **CDN** solve that a load balancer does not?
+
+<details>
+<summary>Show Answer</summary>
+
+A **load balancer** distributes requests across servers in *your* data centre — it doesn't move content closer to the user geographically.
+
+A **CDN** caches content at edge nodes worldwide, physically close to users. A user in Tokyo gets assets from a Tokyo edge node instead of a US data centre — reducing latency from ~200ms to ~5ms. CDN also absorbs traffic load so your origin servers see far fewer requests, and provides DDoS mitigation at the edge.
+
+</details>
+
+---
+
+### Round 2 — Applied Scenarios (2 pts each)
+
+*Given a situation, diagnose the problem and propose a solution using the right concepts.*
+
+---
+
+**Q16.** Twitter launches in a new country and users there complain the app is slow to load. No server errors — just slow. What's the most likely cause and fix?
+
+<details>
+<summary>Show Answer</summary>
+
+**Cause:** High network latency — users are geographically far from Twitter's data centres (likely in the US). The speed of light limits how fast data can travel across continents.
+
+**Fix:**
+1. **CDN** — serve static assets (JS, CSS, images, media) from edge nodes in or near that country. Eliminates most of the perceived slowness for page loads.
+2. **GeoDNS** — route API calls to the nearest regional data centre (if one exists or is being set up).
+3. **HTTP/2** — reduce round trips by multiplexing requests over a single connection.
+
+The CDN fix alone typically reduces load time by 60–80% for geographically distant users.
+
+</details>
+
+---
+
+**Q17.** A service processes payments. You have two replicas of the payments database. A network partition splits them for 30 seconds. Do you choose CP or AP — and what happens to users during those 30 seconds?
+
+<details>
+<summary>Show Answer</summary>
+
+**Choose CP (Consistency + Partition Tolerance).**
+
+During the 30-second partition, one side stops accepting writes (becomes unavailable). Users trying to pay receive an error or a "please try again" message.
+
+**Why not AP?** If both sides kept accepting payments, the same card could be charged twice, or a single budget could be spent twice. Financial data corruption is far worse than 30 seconds of downtime. Banks, payment processors (Stripe, PayPal), and booking systems all choose CP.
+
+After the partition heals, the two nodes reconcile — no conflicting writes occurred because one side was locked.
+
+</details>
+
+---
+
+**Q18.** Your API is being hammered by a bot that makes 50,000 requests per minute. Your app servers are struggling. Walk through every layer of defence you'd put in place, in order.
+
+<details>
+<summary>Show Answer</summary>
+
+In order from outermost to innermost:
+
+1. **CDN / edge (Cloudflare):** Block or challenge the bot's IP/ASN at the network edge before it reaches your infrastructure. Absorbs the traffic before it costs you compute.
+2. **API Gateway rate limiting:** Token bucket per IP/API key — `429 Too Many Requests` after N requests/minute. Most bots don't handle 429 gracefully.
+3. **Reverse proxy (Nginx):** `limit_req_zone` — hard limit on connections per IP at the TCP level.
+4. **Application-level rate limiting:** Redis counter per user/session — fine-grained control with dynamic block lists.
+5. **Load balancer health checks:** If a bot overwhelms one pod, the LB stops routing to it while it recovers; the fleet absorbs the attack.
+
+The key principle: stop the traffic as far from your application code as possible — edge >> gateway >> reverse proxy >> app.
+
+</details>
+
+---
+
+**Q19.** You denormalized the Twitter home timeline using fan-out-on-write. Elon Musk (170M followers) posts a tweet. What goes wrong and how do you fix it?
+
+<details>
+<summary>Show Answer</summary>
+
+**Problem:** Fan-out-on-write means writing the new tweet ID to 170 million Redis timeline caches. At even 1ms per write that's 170,000 seconds of work (days) — clearly impossible synchronously. Even parallelized, the fan-out workers are overwhelmed; timelines of Musk's followers stay stale for hours.
+
+**Fix — hybrid fan-out:**
+- **Regular users** (< ~1M followers): fan-out-on-write as normal.
+- **Celebrity accounts** (> threshold): fan-out-on-read. The tweet is stored once in Cassandra. When a follower loads their timeline, the Timeline Service checks a special "celebrity tweets" list and merges it into the pre-built timeline at read time.
+
+Twitter actually implemented exactly this. The threshold for switching to fan-out-on-read is somewhere around 1M followers.
+
+</details>
+
+---
+
+**Q20.** A microservice calls another microservice to complete a payment. The network call succeeds, but the response is lost. The caller retries. How do you prevent a double charge?
+
+<details>
+<summary>Show Answer</summary>
+
+**Idempotency key.** The calling service generates a UUID for this payment attempt before the first call and sends it in the request header (`Idempotency-Key: uuid`). The payment service stores `(idempotency_key → result)` in a database with a TTL.
+
+On the retry:
+- Payment service receives the same UUID
+- Finds it in the store: "this payment was already processed, result was `{charge_id: ch_123, status: succeeded}`"
+- Returns the cached result without charging again
+
+The caller gets its confirmation; no double charge. This is exactly how Stripe's API works.
+
+</details>
+
+---
+
+**Q21.** You're designing a real-time collaborative document editor (Google Docs). Which concepts from this guide are most critical, and why?
+
+<details>
+<summary>Show Answer</summary>
+
+**WebSockets** — persistent bidirectional connections let the server push every keystroke from any collaborator to all other connected clients instantly. HTTP polling would be too slow and wasteful.
+
+**Message Queues (Kafka)** — when a user types, the change event is published to Kafka. Multiple consumers process it: persistence to DB, broadcast to collaborator WebSocket connections, conflict resolution (operational transform / CRDT).
+
+**CAP Theorem** — this is a hard AP situation. You can't pause everyone's editing because of a network partition. Accept eventual consistency: users may see slightly divergent documents for milliseconds, which converge via conflict resolution.
+
+**Caching** — the current document state is kept in Redis so the server can quickly compute diffs and broadcast only changes, not the full document.
+
+**Horizontal Scaling** — WebSocket connections are stateful (pinned to a server). Use Redis Pub/Sub so any server can receive a change event and push it to all connected clients, regardless of which server holds their WebSocket.
+
+</details>
+
+---
+
+**Q22.** A startup's single MySQL server is running at 95% CPU. The CTO says "just shard it." The senior engineer says "try replication first." Who's right and why?
+
+<details>
+<summary>Show Answer</summary>
+
+**The senior engineer is right** — in most cases.
+
+First, diagnose: is the CPU load from **reads** or **writes**?
+
+- If it's **mostly reads** (very common — typically 80%+ of DB traffic is reads): add **read replicas**. Route SELECT queries to replicas. Zero application changes needed, no resharding pain, live in hours.
+- If it's **mostly writes**: replication doesn't help — all writes still hit the primary. Now consider sharding or vertical scaling first (buy a bigger box; cheaper than resharding).
+
+**Why not shard first?** Sharding requires: choosing a shard key, splitting the data, updating all application queries to include the shard key, handling cross-shard queries, managing N database clusters instead of one. It takes weeks and introduces new failure modes. Always exhaust simpler options (replication, vertical scale, query optimisation, indexing) before sharding.
+
+</details>
+
+---
+
+**Q23.** A user posts a tweet. List every system that needs to be updated before the tweet is "fully live" — and which of those updates must be synchronous (blocking) vs asynchronous (can happen later).
+
+<details>
+<summary>Show Answer</summary>
+
+**Synchronous (must complete before returning 201 to the user):**
+- Write tweet to Cassandra (source of truth) — user expects to see their own tweet immediately
+- Write to the user's own timeline cache (Redis) — read-your-own-writes consistency
+
+**Asynchronous (can happen in background via Kafka):**
+- Fan-out to all followers' timeline caches
+- Index tweet text in Elasticsearch (search)
+- Send push notifications to followers with notifications enabled
+- Update tweet count on user profile (denormalized counter)
+- Transcode any attached media (image resizing, video variants)
+- Log to analytics pipeline
+- Feed to ad targeting model
+
+The tweet is "live" for the author the moment Cassandra confirms. The fan-out to 1M followers can take seconds — that's acceptable.
+
+</details>
+
+---
+
+**Q24.** What is the **N+1 query problem** in GraphQL and how do you solve it?
+
+<details>
+<summary>Show Answer</summary>
+
+**The problem:** A GraphQL query asks for 10 tweets with their author names. A naive resolver fetches the 10 tweets (1 query), then for each tweet fires a separate query to fetch the author (10 more queries) = **11 queries** total — the "N+1" pattern. At scale this is catastrophic.
+
+**Solution — DataLoader (batching):**
+DataLoader collects all author ID requests made during a single event loop tick, then fires **one batched query** at the end: `SELECT * FROM users WHERE id IN (1, 5, 7, 12, ...)`. Result: 2 queries regardless of how many tweets are in the response.
+
+DataLoader also **deduplicates**: if two tweets have the same author, it's only fetched once.
+
+</details>
+
+---
+
+**Q25.** Design the rate limiting system for Twitter's API using Redis. What data structure do you use? What commands? How does it work across 50 API Gateway nodes?
+
+<details>
+<summary>Show Answer</summary>
+
+**Data structure:** Redis `STRING` (simple counter) with expiry, or `SORTED SET` for sliding window.
+
+**Fixed window (simplest):**
+```
+key:  ratelimit:{api_key}:{minute_bucket}   e.g. ratelimit:abc123:202406091423
+INCR  ratelimit:abc123:202406091423         → returns new count
+EXPIRE ratelimit:abc123:202406091423 60     → key expires after 60s
+if count > 300: return 429
+```
+
+**Why this works across 50 nodes:** All 50 API Gateway instances hit the **same Redis cluster**. The counter is shared and authoritative. Node A's increment and Node B's increment both go to the same Redis key. No per-node counters that drift apart.
+
+**Atomic INCR + EXPIRE race condition fix:** Use a Lua script to atomically `INCR` and set `EXPIRE` only if the key is new — prevents a race where two nodes both set TTL on the same key.
+
+**Sliding window (more accurate):** Use a `SORTED SET` keyed by `{api_key}`, members are request timestamps, score is the timestamp. `ZREMRANGEBYSCORE` removes old entries; `ZCARD` counts current window. One round trip with a Lua script.
+
+</details>
+
+---
+
+### Round 3 — Architect's Table (3 pts each)
+
+*Open-ended design questions. Full marks for hitting all key concepts; partial marks for good reasoning.*
+
+---
+
+**Q26.** Design a system to detect and block abusive accounts on Twitter in near-real time (accounts posting spam/hate at high volume). What concepts from this guide do you use, and how do they connect?
+
+<details>
+<summary>Show Answer</summary>
+
+**Full-marks answer covers:**
+
+1. **Message Queues (Kafka):** Every tweet_created event flows through Kafka. A `content_moderation` consumer group reads every tweet in real time without slowing the posting path (async, decoupled).
+
+2. **Microservices:** A dedicated Abuse Detection Service consumes from Kafka. It runs ML classifiers or rule-based checks (post rate, keyword matching, account age). Isolated from core tweet serving — can fail without taking down timelines.
+
+3. **Rate Limiting (as a signal):** An account posting 200 tweets/hour triggers a rate-limit flag, which the Abuse Detection Service picks up as a strong abuse signal — rate limiting data is already in Redis.
+
+4. **Caching (Redis):** Flagged account IDs stored in a Redis set. Every downstream service (tweet serving, search indexer) checks this set before processing — sub-millisecond lookup.
+
+5. **Denormalization:** A `is_suspended` flag is denormalized into the Redis user object so every service can check it without querying MySQL.
+
+6. **Webhooks:** Notify trust-and-safety tooling (external dashboard) via webhook when a high-confidence abuse account is detected — human review triggered automatically.
+
+7. **CAP — AP:** The abuse detection system is AP. A brief window where a newly-abusive account's tweets reach some feeds is acceptable (tweets later removed). The system must never go down and block legitimate posts.
+
+</details>
+
+---
+
+**Q27.** Twitter wants to add a "Trending Topics" feature — showing the top 10 hashtags being used in the last hour globally. Design the data pipeline.
+
+<details>
+<summary>Show Answer</summary>
+
+**Full-marks answer:**
+
+1. **Message Queues (Kafka):** Every tweet_created event is already in Kafka. A `trending_topics` consumer group reads these events and extracts hashtags.
+
+2. **Stream Processing (Kafka Streams / Flink):** A sliding window aggregator counts hashtag occurrences in a 1-hour rolling window. Every 30 seconds, it computes the top 10 and writes to a results store.
+
+3. **Caching (Redis):** The top-10 trending list is stored in Redis (key: `trending:global`, value: JSON list). TTL: 30 seconds (refreshed by the stream processor). Every API call for trending topics hits Redis — ~0.5ms, zero DB load.
+
+4. **Denormalization:** Trending data is pre-computed and stored flat — no complex query at read time. A classic denormalization trade-off: compute on write, serve instantly on read.
+
+5. **Sharding concern:** For global scale, the stream processor must aggregate across all tweet shards. The aggregation service fans in from all Kafka partitions and merges counts — a reduce step.
+
+6. **Vertical Partitioning:** Trending data is completely separate from tweet storage. Independent scaling, independent caching.
+
+7. **CDN / API Gateway cache:** The trending endpoint is the same for all users (global top 10). Cache at the API Gateway for 30 seconds — billions of requests collapse to one cache entry.
+
+**Data flow:** Kafka tweet events → Stream processor (sliding window count) → Redis every 30s → API Gateway cache → User
+
+</details>
+
+---
+
+**Q28.** You are asked to migrate Twitter from a monolith to microservices. What order do you extract services, and what risks do you manage at each step?
+
+<details>
+<summary>Show Answer</summary>
+
+**Full-marks answer:**
+
+**Principle — Strangler Fig Pattern:** Don't rewrite everything at once. Extract one service at a time, route traffic to it, decommission the monolith piece by piece.
+
+**Extraction order (lowest risk → highest risk):**
+
+1. **Media Service first** — Blob storage (S3) + metadata. Least coupled, clear boundary, no transactions with core tweet logic. Risk: presigned URL generation must be tested thoroughly.
+
+2. **Notification Service** — Already async (sends emails/push). Extract to its own Kafka consumer. Risk: message ordering — notifications must not arrive before the tweet that triggered them.
+
+3. **Search Service** — Read-only from the monolith's perspective. Dual-write to Elasticsearch from Kafka events. Risk: index lag during switchover.
+
+4. **User Service** — High coupling (almost everything touches users). Extract behind a stable API first; monolith calls the new User Service. Risk: distributed transactions if user creation touches other tables atomically.
+
+5. **Tweet Service** — Core write path. Last to extract. Risk: highest blast radius if this breaks. Blue/green deploy; canary traffic at 1% before full cutover.
+
+**Risks at every step:**
+- **Latency:** In-process function calls become network calls (~1ms overhead per hop)
+- **Distributed transactions:** Use Saga pattern or outbox pattern (write to DB + Kafka atomically)
+- **Data ownership:** Each service must own its database. Dual-read period during migration
+- **Testing:** Contract testing (Pact) ensures services honour each other's API contracts
+- **Observability:** Distributed tracing (Jaeger/Zipkin) essential — a request touching 5 services needs one trace
+
+</details>
+
+---
+
+**Q29.** A new feature lets users "bookmark" tweets. The bookmarks table starts small but grows to 10 billion rows in a year. Design the data layer from day one, anticipating scale.
+
+<details>
+<summary>Show Answer</summary>
+
+**Full-marks answer:**
+
+**Schema design:**
+```
+bookmarks (user_id, tweet_id, bookmarked_at)
+Primary key: (user_id, tweet_id)   -- enforces uniqueness, no duplicate bookmarks
+```
+
+**Database choice (SQL vs NoSQL):**
+This is a simple key-value relationship with time-range queries (`bookmarks by user, ordered by time`). No complex JOINs needed. → **Cassandra** (NoSQL, wide-column) is appropriate: partition key `user_id`, clustering key `bookmarked_at DESC`. One node holds all of one user's bookmarks, enabling fast range reads.
+
+**Sharding:** Cassandra shards automatically by partition key (`user_id` consistent hashing). No manual shard management.
+
+**Indexing:** Cassandra's primary key already gives fast `WHERE user_id = X ORDER BY bookmarked_at DESC` — no extra index needed.
+
+**Caching:** Recent bookmarks cached in Redis (key: `bookmarks:{user_id}`, sorted set by timestamp, TTL 5 min). Most users check their recent bookmarks, not all 10,000 — cache the first page.
+
+**Replication:** Cassandra replication factor 3 across availability zones. AP system — a bookmark showing up 1 second late is acceptable.
+
+**Vertical Partitioning:** `bookmarks` table is separate from tweets and users. Scales independently; a bookmark write doesn't contend with tweet writes.
+
+**API design:** `GET /bookmarks?cursor={tweet_id}&limit=20` — cursor-based pagination (not offset), stable as new bookmarks are added.
+
+**Day-one vs scale:** Start with Cassandra from day one (even at small scale, the schema is identical — no migration needed at 10B rows). Don't start with MySQL and migrate later under load.
+
+</details>
+
+---
+
+**Q30.** A critical bug causes Twitter's Timeline Service to go down for 5 minutes. Walk through exactly what users experience and how the system recovers — referencing every relevant concept.
+
+<details>
+<summary>Show Answer</summary>
+
+**Full-marks answer:**
+
+**T=0 — Timeline Service pods crash:**
+- **Load Balancer** health checks detect failing pods within 10–30 seconds (`/health` returns 500). Stops routing timeline requests to dead pods.
+- Users requesting their home feed get `503 Service Unavailable`.
+- **API Gateway** returns a graceful error response rather than a timeout (circuit breaker pattern).
+
+**T=0 to T=5min — other services continue:**
+- **Microservices isolation:** The Tweet Service, User Service, and Notification Service are unaffected. Users can still post tweets, update profiles, and receive push notifications. (Contrast with a monolith: everything would be down.)
+- **Kafka** continues buffering all tweet_created events. The fan-out consumer is part of the Timeline Service — it falls behind. Kafka retains messages (7-day retention). No events are lost.
+- **Redis** timeline caches still hold the last-known timeline for each user. If the system can serve stale timelines from Redis during the outage, users see slightly old data rather than errors — **AP design** absorbs the failure gracefully.
+
+**T=5min — Timeline Service recovers:**
+- Kubernetes restarts crashed pods. New pods pass health checks.
+- Load Balancer resumes routing to healthy pods.
+- **Kafka fan-out consumer** resumes from its last committed offset — replays all 5 minutes of missed tweet events and catches up on the timeline backlog.
+- **Redis caches** are updated as catch-up fan-out writes new tweet IDs.
+- **Eventual consistency:** Within ~60 seconds of recovery, most timelines are up to date. Users who loaded during outage see stale feeds refresh on their next pull.
+
+**Replication saved the databases:** MySQL and Cassandra replicas were unaffected — the data layer never went down, only the application layer did.
+
+**Post-incident:** The team adds a circuit breaker so future Timeline Service failures return cached (stale) timelines from Redis rather than 503 errors — **graceful degradation** over hard failure.
+
+</details>
+
+---
+
+> **Final Score Check**
+>
+> | Score | Verdict |
+> |-------|---------|
+> | 45–50 | Senior engineer level — go ace that interview |
+> | 40–44 | Interview-ready — brush up on any questions you missed |
+> | 30–39 | Solid foundation — re-read the sections for wrong answers |
+> | 20–29 | Re-read the full guide, then retake |
+> | Below 20 | Start from Part 1 and work through systematically |
